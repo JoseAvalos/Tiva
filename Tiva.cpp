@@ -13,7 +13,7 @@ using namespace std;
 #define POST_NUMBER 3
 
 StaticJsonBuffer<200> jsonBuffer;
-
+char* prueba;
 API::API(DDS* _DDS)
 {
     _DDS_JRO=_DDS;
@@ -59,10 +59,12 @@ int API::readcommand( EthernetClient client)
                 *****************************************************/
                 else if (httpRequest.getResource()[0] == "status")
                 {
-					JsonObject&  dds_status = jsonBuffer.createObject();
-					int state= _DDS_JRO->init();
-					dds_status["Coneccion"] = String(state);
-					dds_status["Frecuencia1"] = 1351824120;
+					Serial.print("Status");
+                    JsonObject&  dds_status = jsonBuffer.createObject();
+					
+                    dds_status["Conection"] = String(_DDS_JRO->verifyconnection());
+                    dds_status["Frequency1"] =String(_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency1()));
+                    dds_status["Frequency2"] =String(_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency2()));
 								
                     String hola1 = "";
                     dds_status.printTo(hola1);
@@ -73,7 +75,7 @@ int API::readcommand( EthernetClient client)
                 else
                 {
                     msg=3;
-                    //httpReply.send("{"msg":"wrong command"}");
+                    //httpReply.send("{"Request_msg":"wrong command"}");
                 }
             }
             else if ( method == ArduinoHttpServer::MethodPost)
@@ -84,11 +86,16 @@ int API::readcommand( EthernetClient client)
                 if (httpRequest.getResource()[0] == "write")
                 {
                     msg=4;
-                    // httpReply.send("{"write":"ok"}n");
-                    // StaticJsonBuffer<400> jsonBuffer;
-                    // JsonObject& jsondata = jsonBuffer.parseObject(data);
-                    // const char* username = jsondata["username"];
-                    // Serial.println(username);
+                    
+                    StaticJsonBuffer<400> jsonBuffer;
+                    JsonObject& jsondata = jsonBuffer.parseObject(data);
+                    double freq_1 = double(jsondata["frequency1"]);
+                    Serial.println(freq_1);
+                    prueba= _DDS_JRO->freq2binary(freq_1);
+                    _DDS_JRO->print(prueba,8);
+                    int exito= _DDS_JRO->wrFrequency1(prueba);
+                    Serial.println(exito);
+                    httpReply.send("{\"write\":\"2\"}");
                 }
                 /*******************************************************
                 START
