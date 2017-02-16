@@ -9,10 +9,10 @@
 class API 
 {
   public:
-  	API(DDS*);
+  	API(DDS*,IPAddress, byte[]);
   	int readcommand(EthernetClient);
   private:  
-   DDS* _DDS_JRO;
+  	DDS* _DDS_JRO;
 };
 
 #endif
