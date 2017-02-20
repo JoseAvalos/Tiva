@@ -48,18 +48,7 @@ int API::readcommand( EthernetClient client)
                 *****************************************************/
                 if (httpRequest.getResource()[0] ==  "read")
                 {
-                    JsonObject&  dds_status = jsonBuffer.createObject();
-                    dds_status["Conection"] = "YES";
-                    dds_status["Clock"]= _DDS_JRO->getclock() ;
-                    dds_status["Frequency1"] =_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency1())*_DDS_JRO->getMultiplier();
-                    dds_status["Frequency2"] =_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency2())*_DDS_JRO->getMultiplier();
-                    dds_status["Multiplier"] =double(_DDS_JRO->getMultiplier());
-                    dds_status["Clock"] =_DDS_JRO->getclock();
-
-                    String hola1;
-                    dds_status.printTo(hola1);
-                    const String& msg_json = hola1;
-                    httpReply.send(msg_json);
+                    
                     msg=1;
 
                 }
@@ -68,7 +57,21 @@ int API::readcommand( EthernetClient client)
                 *****************************************************/
                 else if (httpRequest.getResource()[0] == "status")
                 {
-                	msg=2;
+                	JsonObject&  dds_status = jsonBuffer.createObject();
+                    dds_status["Conection"] = "YES";
+                    dds_status["Clock"]= _DDS_JRO->getclock() ;
+                    dds_status["Frequency1_out"] =_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency1())*_DDS_JRO->getMultiplier();
+                    dds_status["Frequency2_out"] =_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency2())*_DDS_JRO->getMultiplier();
+                    dds_status["Multiplier"] =double(_DDS_JRO->getMultiplier());
+                    dds_status["Frequency1_reg"] =_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency1());
+                    dds_status["Frequency2_reg"] =_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency2());
+                    dds_status["Clock"] =_DDS_JRO->getclock();
+
+                    String hola1;
+                    dds_status.printTo(hola1);
+                    const String& msg_json = hola1;
+                    httpReply.send(msg_json);
+                    msg=2;
                 }
                 else
                 {
@@ -83,36 +86,56 @@ int API::readcommand( EthernetClient client)
                 if (httpRequest.getResource()[0] == "write")
                 {
                     JsonObject& jsondata = jsonBuffer.parseObject(data);
-                    double freq_1 =double(jsondata["frequency1"]);
-                    freq_1*=1000000; 
+                    double freq_1 =(jsondata["frequency1"]);
+                    Serial.println(freq_1,20);
+                    //freq_1=freq_1*1000000.d; 
+                    //Serial.println(freq_1,10);
+
                     freq_1/=_DDS_JRO->getMultiplier();
                     
                     if(freq_1<=_DDS_JRO->getclock()/2)// && freq_1>=_DDS_JRO->getclock()/250)
                     {                   
-                        Serial.println(freq_1);
-                        char* x=(_DDS_JRO->freq2binary(freq_1));
-                        _DDS_JRO->wrFrequency1(x);
+                        Serial.println(freq_1,10);
+                        char* bytevalue;
+                        bytevalue=(_DDS_JRO->freq2binary(freq_1));
                         
-
+                        Serial.println(bytevalue[0],HEX );
+                        Serial.println(bytevalue[1],HEX );
+                        Serial.println(bytevalue[2],HEX );
+                        Serial.println(bytevalue[3],HEX );
+                        Serial.println(bytevalue[4],HEX );
+                        Serial.println(bytevalue[5],HEX );
+                        _DDS_JRO->wrFrequency1(bytevalue);
+                        
+                        double fre_out = _DDS_JRO->binary2freq(_DDS_JRO->rdFrequency1())*_DDS_JRO->getMultiplier();
                         JsonObject&  dds_status = jsonBuffer.createObject();
                         dds_status["Conection"] = "YES";
                         dds_status["Clock"]= _DDS_JRO->getclock() ;
-                        dds_status["Frequency1"] =_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency1())*_DDS_JRO->getMultiplier();
+                        dds_status["Frequency1"] = fre_out;// double (_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency1())*_DDS_JRO->getMultiplier());
                         dds_status["Frequency2"] =_DDS_JRO->binary2freq(_DDS_JRO->rdFrequency2())*_DDS_JRO->getMultiplier();
                         dds_status["Multiplier"] =double(_DDS_JRO->getMultiplier());
                         dds_status["Clock"] =_DDS_JRO->getclock();
 
-                    String hola1;
-                    dds_status.printTo(hola1);
-                    const String& msg_json = hola1;
-                    httpReply.send(msg_json);
-                    msg=1;
+                        Serial.println(fre_out);
+                        String hola1;
+                        dds_status.printTo(hola1);
+                        const String& msg_json = hola1;
+                        httpReply.send(msg_json);
+                        msg=1;
 
                     }
                     
                     else{
 
-                        httpReply.send("{\"frequency1\":\"out of range\"}");
+                        JsonObject&  dds_error_1 = jsonBuffer.createObject();
+                        dds_error_1["Conection"] = "Configuration error";
+                        dds_error_1["Msg"]= "Frecuency set is out of range, please change value (Mhz)" ;
+
+                        String hola1;
+                        dds_error_1.printTo(hola1);
+                        const String& msg_json = hola1;
+                        httpReply.send(msg_json);
+                        msg=1;
                     }
                     msg=4;
                 }
@@ -129,6 +152,7 @@ int API::readcommand( EthernetClient client)
                 *****************************************************/
                 else if (httpRequest.getResource()[0] == "stop")
                 {
+                    _DDS_JRO->reset();
                     httpReply.send("{\"stop\":\"ok\"}");
                     msg=6;
                 }
